@@ -12,8 +12,14 @@ library(shinythemes)
 library(DT)
 
 # Import JCR database
-dataset <- readRDS(file = "www/ifDatasets.RDS")
-list2env(dataset)
+jcrfs <- list.files(path = "./www", pattern = "JCR.+csv$")
+years <- stringr::str_extract(jcrfs, '\\d+')
+jcrs <- lapply(jcrfs, function(x)
+  read.csv(file.path("www", x)))
+jcr_latest <- read.csv(file.path("www", jcrfs[length(jcrfs)]))
+
+# List of choices for selectInput
+journals <- as.list(jcr_latest$Full.Journal.Title)
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("united"),
