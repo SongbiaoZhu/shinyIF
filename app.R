@@ -13,8 +13,8 @@ library(DT)
 
 # Import JCR database
 dataset <- readRDS(file = "www/ifDatasets.RDS")
-list2env(dataset)
-
+journals <- dataset$journals
+years <- dataset$years
 # Define UI
 ui <- fluidPage(theme = shinytheme("united"),
                 # Application title
@@ -40,23 +40,30 @@ ui <- fluidPage(theme = shinytheme("united"),
 
 # Define server
 server <- function(input, output) {
-  output$journal_name <- renderPrint({
+  jname <- reactive({
     input$select
+  })
+  
+  output$journal_name <- renderPrint({
+    jname()
   })
   
   output$journal_IF <-
     renderPrint({
-      jcr_latest %>%
-        dplyr::filter(Full.Journal.Title == input$select) %>%
+      dataset$jcr_latest %>%
+        dplyr::filter(Full.Journal.Title == jname()) %>%
         dplyr::pull(Journal.Impact.Factor)
     })
   
   output$trend_img <- renderPlot({
-    lapply(jcrs, function(x)
-      dplyr::filter(x, Full.Journal.Title == input$select)) %>%
+    dat_trend <- lapply(dataset$jcrs, function(x)
+      dplyr::filter(x, Full.Journal.Title == jname())) %>%
       do.call(rbind, .) %>%
       dplyr::mutate(Year = years) %>%
-      dplyr::mutate(Journal.Impact.Factor = as.numeric(Journal.Impact.Factor)) %>%
+      dplyr::mutate(Journal.Impact.Factor = as.numeric(Journal.Impact.Factor))
+    
+    
+    dat_trend %>%
       ggplot2::ggplot(mapping = aes(x = Year,
                                     y = Journal.Impact.Factor,
                                     group = 1)) +
@@ -67,15 +74,15 @@ server <- function(input, output) {
         position = position_dodge(0.9),
         hjust = -0.2
       ) +
-    ggtitle(input$select) +
+    ggtitle(jname()) +
       scale_y_continuous(name = "Impact factor") +
       ggtech::theme_tech(theme = "airbnb") +
       scale_fill_tech(theme = "airbnb")
   })
   
   output$IFtable <- renderDataTable({
-    lapply(jcrs, function(x)
-      dplyr::filter(x, Full.Journal.Title == input$select)) %>%
+    lapply(dataset$jcrs, function(x)
+      dplyr::filter(x, Full.Journal.Title == jname())) %>%
       do.call(rbind, .) %>%
       dplyr::mutate(Year = years) %>%
       dplyr::select(Full.Journal.Title,
